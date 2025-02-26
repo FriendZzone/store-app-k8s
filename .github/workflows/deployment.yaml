@@ -27,3 +27,23 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build, tag and push image to Docker Hub
+        id: build-image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t datdh2024/store-repo:$IMAGE_TAG .
+          docker push datdh2024/store-repo:$IMAGE_TAG
+          echo "::set-output name=image::datdh2024/store-repo:$IMAGE_TAG"
+
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v1
+
+      - name: Update kubectl context
+        run: |
+          aws eks --region ap-southeast-1 update-kubeconfig --name adorable-sheepdog-1740457536
+
+      - name: Deploy to Amazon EKS
+        run: |
+          kubectl set image deployment store store=${{ steps.build-image.outputs.image }}
